@@ -10,32 +10,6 @@ This file covers the first piece of the pipeline: loading the dataset and partit
 
 ---
 
-## Setup
-
-**Install dependencies:**
-```bash
-pip install pandas scikit-learn
-```
-
-**Download the dataset:**
-1. Go to https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
-2. Download `creditcard.csv`
-3. Place it in a `data/` folder next to `pipeline.py`
-
-```
-project/
-├── data/
-│   └── creditcard.csv
-└── pipeline.py
-```
-
-**Run:**
-```bash
-python pipeline.py
-```
-
----
-
 ## What this does
 
 Loads `creditcard.csv`, scales the `Time` and `Amount` columns, and splits the data into three stratified subsets:
