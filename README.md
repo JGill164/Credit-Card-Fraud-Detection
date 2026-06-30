@@ -1,7 +1,7 @@
 # Credit-Card-Fraud-Detection
 # Credit Card Fraud Detection — Data Pipeline
 
-## Introduction
+## Introduction 
 
 Credit card fraud is a major challenge in the financial industry, costing billions of dollars globally each year. Detecting fraudulent transactions automatically is critical, but difficult — fraud cases are rare, patterns are subtle, and models must be both accurate and fast enough to flag transactions in real time.
 
