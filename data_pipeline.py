@@ -29,14 +29,22 @@ def load_data(path: str) -> pd.DataFrame:
     assert df.isnull().sum().sum() == 0, "Unexpected missing values found!"
     return df
 
-def preprocess(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
+def preprocess(X_train, X_val, X_test):
+    X_train = X_train.copy()
+    X_val = X_val.copy()
+    X_test = X_test.copy()
+
     scaler = StandardScaler()
-    df[['Time', 'Amount']] = scaler.fit_transform(df[['Time', 'Amount']])
-    print("[prep]   Time & Amount scaled (StandardScaler)")
-    return df
 
+    cols = ['Time', 'Amount']
 
+    X_train[cols] = scaler.fit_transform(X_train[cols])
+    X_val[cols] = scaler.transform(X_val[cols])
+    X_test[cols] = scaler.transform(X_test[cols])
+
+    print("[prep]   Time & Amount scaled using training statistics")
+
+    return X_train, X_val, X_test
 # partition
 
 def partition_data(
@@ -119,8 +127,8 @@ def main():
 
     data_path    = download_data() if args.data is None else args.data
     df_raw       = load_data(data_path)
-    df_processed = preprocess(df_raw)
-    X_train, X_val, X_test, y_train, y_val, y_test = partition_data(df_processed)
+    X_train, X_val, X_test, y_train, y_val, y_test = partition_data(df_raw)
+    X_train, X_val, X_test = preprocess(X_train, X_val, X_test)
 
     print("\n[done]  Splits ready for modelling.")
     print(f"        X_train : {X_train.shape}")
