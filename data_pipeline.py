@@ -102,6 +102,16 @@ def save_splits(X_train, X_val, X_test, y_train, y_val, y_test,
 
     print("[save]  Done.")
 
+# evaluateModel caluclates the true positive, false positive, and false negative
+# returns precision, recall, and f1 score
+def evaluateModel(y_pred, y_true):
+    tp = np.sum((y_pred == 1) & (y_true == 1))
+    fp = np.sum((y_pred == 1) & (y_true == 0))
+    fn = np.sum((y_pred == 0) & (y_true == 1))
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = (2 * precision * recall)/(precision + recall)
+    return precision, recall, f1
 
 #Main
 
