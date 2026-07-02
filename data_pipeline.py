@@ -5,6 +5,7 @@ import pandas as pd
 import kagglehub
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn import linear_model
 
 RANDOM_STATE = 42
 
@@ -138,6 +139,16 @@ def main():
     print(f"        X_test  : {X_test.shape}")
 
     save_splits(X_train, X_val, X_test, y_train, y_val, y_test)
+
+    model = linear_model.LogisticRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_val)
+    precision, recall, f1 = evaluateModel(y_pred,y_val)
+
+    print("\n[Evaluate]  Model Evaluation.")
+    print(f"        Precision : {precision}")
+    print(f"        Recall   : {recall}")
+    print(f"        F1-score  : {f1}")
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
