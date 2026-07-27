@@ -3,10 +3,12 @@ import os
 import numpy as np
 import pandas as pd
 import kagglehub
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn import linear_model
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import roc_auc_score, RocCurveDisplay, PrecisionRecallDisplay
 
 RANDOM_STATE = 42
 
@@ -127,7 +129,9 @@ def evaluateModel(y_pred, y_true):
     else:
         f1 = 0
 
-    return precision, recall, f1
+    rocAuc = roc_auc_score(y_true = y_true, y_score = y_pred)
+
+    return precision, recall, f1, rocAuc
 
 # Milestone 2 — point 1: analyze class distribution & class balancing
 
@@ -162,16 +166,30 @@ def analyze_class_distribution(y_train):
 def train_and_evaluate(model, name, X_train, y_train, X_val, y_val):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_val)
-    precision, recall, f1 = evaluateModel(y_pred, y_val)
+    y_prob = model.predict_proba(X_val)[:, 1]
+    precision, recall, f1, rocAuc= evaluateModel(y_pred, y_val)
+    create_graphs(name ,y_val, y_prob, precision, recall)
 
     print(f"\n[Evaluate]  {name}")
     print(f"        Precision : {precision:.4f}")
     print(f"        Recall    : {recall:.4f}")
     print(f"        F1-score  : {f1:.4f}")
+    print(f"        ROC-AUC-score  : {rocAuc:.4f}")
 
-    return model, {"precision": precision, "recall": recall, "f1": f1}
+    return model, {"precision": precision, "recall": recall, "f1": f1, "roc-auc": rocAuc}
 
-
+# create_graphs creates the precision vs recall graph and the ROC curve graph
+def create_graphs(name ,y_true, y_prob, precision, recall):
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
+    PrecisionRecallDisplay.from_predictions(y_true = y_true, y_score = y_prob, ax = axs[0])
+    axs[0].set_title(f"Precision and Recall curve for {name}")
+    axs[0].plot(recall, precision, marker = "*", markersize = 8, color = "red", label="Default threshold of 0.5")
+    axs[0].legend()
+    RocCurveDisplay.from_predictions(y_true = y_true, y_score = y_prob, ax = axs[1])
+    axs[1].set_title(f"ROC curve for {name}")
+    axs[1].plot(recall, precision, marker = "*", markersize = 8, color = "red", label = "Default threshold of 0.5")
+    axs[1].legend()
+    return
 # Main
 
 def main():
@@ -197,7 +215,7 @@ def main():
     print(f"        X_test  : {X_test.shape}")
 
     save_splits(X_train, X_val, X_test, y_train, y_val, y_test)
-
+   
     print("\n[MVS]  Baseline logistic regression (unweighted)")
     baseline_model, baseline_metrics = train_and_evaluate(
         linear_model.LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
@@ -226,14 +244,16 @@ def main():
     )
 
     print("\n[Summary]  Validation performance comparison")
-    print(f"  {'Model':<38} {'Precision':>10} {'Recall':>8} {'F1':>8}")
-    print(f"  {'-'*66}")
+    print(f"  {'Model':<38} {'Precision':>10} {'Recall':>8} {'F1':>8} {'ROC-AUC':>8}")
+    print(f"  {'-'*76}")
     for name, m in [
         ("Logistic Regression (baseline)", baseline_metrics),
         ("Logistic Regression (balanced)", balanced_lr_metrics),
         ("Decision Tree (balanced)", tree_metrics),
     ]:
-        print(f"  {name:<38} {m['precision']:>10.4f} {m['recall']:>8.4f} {m['f1']:>8.4f}")
+        print(f"  {name:<38} {m['precision']:>10.4f} {m['recall']:>8.4f} {m['f1']:>8.4f} {m['roc-auc']:>8.4f}")
+
+    plt.show()
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
