@@ -6,6 +6,7 @@ import kagglehub
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn import linear_model
+from sklearn.tree import DecisionTreeClassifier
 
 RANDOM_STATE = 42
 
@@ -117,12 +118,61 @@ def evaluateModel(y_pred, y_true):
     tp = np.sum((y_pred == 1) & (y_true == 1))
     fp = np.sum((y_pred == 1) & (y_true == 0))
     fn = np.sum((y_pred == 0) & (y_true == 1))
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    f1 = (2 * precision * recall)/(precision + recall)
+
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+
+    if precision + recall != 0:
+        f1 = (2 * precision * recall) / (precision + recall)
+    else:
+        f1 = 0
+
     return precision, recall, f1
 
-#Main
+# Milestone 2 — point 1: analyze class distribution & class balancing
+
+def analyze_class_distribution(y_train):
+    """Report the train-split class imbalance and derive class weights.
+
+    Uses sklearn's 'balanced' heuristic (n_samples / (n_classes * n_bin_count)),
+    which is equivalent to inversely weighting each class by its frequency —
+    i.e. fraud (the minority class) gets a much higher misclassification
+    penalty than the legitimate class, per the balancing approach described
+    in the project plan.
+    """
+    counts = y_train.value_counts().sort_index()
+    n_legit, n_fraud = counts.get(0, 0), counts.get(1, 0)
+    total = n_legit + n_fraud
+    imbalance_ratio = n_legit / n_fraud if n_fraud else float('inf')
+
+    # sklearn's 'balanced' formula: total / (n_classes * class_count)
+    weight_legit = total / (2 * n_legit) if n_legit else 0
+    weight_fraud = total / (2 * n_fraud) if n_fraud else 0
+
+    print("\n[Milestone 2 · 1] Class distribution & balancing (train split)")
+    print(f"        Legit (0) : {n_legit:>7,}  ({n_legit/total*100:.3f}%)")
+    print(f"        Fraud (1) : {n_fraud:>7,}  ({n_fraud/total*100:.3f}%)")
+    print(f"        Imbalance ratio (legit:fraud) ≈ {imbalance_ratio:,.1f} : 1")
+    print(f"        Class weights (balanced)  → legit: {weight_legit:.4f}, "
+          f"fraud: {weight_fraud:.4f}")
+
+    return {0: weight_legit, 1: weight_fraud}
+
+
+def train_and_evaluate(model, name, X_train, y_train, X_val, y_val):
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_val)
+    precision, recall, f1 = evaluateModel(y_pred, y_val)
+
+    print(f"\n[Evaluate]  {name}")
+    print(f"        Precision : {precision:.4f}")
+    print(f"        Recall    : {recall:.4f}")
+    print(f"        F1-score  : {f1:.4f}")
+
+    return model, {"precision": precision, "recall": recall, "f1": f1}
+
+
+# Main
 
 def main():
     parser = argparse.ArgumentParser(description="Credit card fraud data pipeline")
@@ -148,15 +198,42 @@ def main():
 
     save_splits(X_train, X_val, X_test, y_train, y_val, y_test)
 
-    model = linear_model.LogisticRegression()
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_val)
-    precision, recall, f1 = evaluateModel(y_pred,y_val)
+    print("\n[MVS]  Baseline logistic regression (unweighted)")
+    baseline_model, baseline_metrics = train_and_evaluate(
+        linear_model.LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
+        "Logistic Regression — baseline (unweighted)",
+        X_train, y_train, X_val, y_val,
+    )
 
-    print("\n[Evaluate]  Model Evaluation.")
-    print(f"        Precision : {precision}")
-    print(f"        Recall   : {recall}")
-    print(f"        F1-score  : {f1}")
+    # ---- Milestone 2 · point 1: analyze class distribution, apply class
+    #      balancing technique (class weighting), and retrain the model ----
+    class_weights = analyze_class_distribution(y_train)
+
+    balanced_lr_model, balanced_lr_metrics = train_and_evaluate(
+        linear_model.LogisticRegression(
+            class_weight=class_weights, max_iter=1000, random_state=RANDOM_STATE
+        ),
+        "Logistic Regression — class-weighted",
+        X_train, y_train, X_val, y_val,
+    )
+
+    # ---- Milestone 2 · point 2: decision tree model (also class-weighted,
+    #      since the imbalance applies here too) for comparison ----
+    tree_model, tree_metrics = train_and_evaluate(
+        DecisionTreeClassifier(class_weight=class_weights, random_state=RANDOM_STATE),
+        "Decision Tree — class-weighted",
+        X_train, y_train, X_val, y_val,
+    )
+
+    print("\n[Summary]  Validation performance comparison")
+    print(f"  {'Model':<38} {'Precision':>10} {'Recall':>8} {'F1':>8}")
+    print(f"  {'-'*66}")
+    for name, m in [
+        ("Logistic Regression (baseline)", baseline_metrics),
+        ("Logistic Regression (balanced)", balanced_lr_metrics),
+        ("Decision Tree (balanced)", tree_metrics),
+    ]:
+        print(f"  {name:<38} {m['precision']:>10.4f} {m['recall']:>8.4f} {m['f1']:>8.4f}")
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
