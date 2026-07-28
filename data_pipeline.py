@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import kagglehub
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TunedThresholdClassifierCV
 from sklearn.preprocessing import StandardScaler
 from sklearn import linear_model
 from sklearn.tree import DecisionTreeClassifier
@@ -120,9 +120,11 @@ def evaluateModel(y_pred, y_true):
     tp = np.sum((y_pred == 1) & (y_true == 1))
     fp = np.sum((y_pred == 1) & (y_true == 0))
     fn = np.sum((y_pred == 0) & (y_true == 1))
+    tn = np.sum((y_pred == 0) & (y_true == 0))
 
     precision = tp / (tp + fp) if (tp + fp) != 0 else 0
     recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+    specificity = tn / (tn + fp) if (tn + fp) != 0 else 0
 
     if precision + recall != 0:
         f1 = (2 * precision * recall) / (precision + recall)
@@ -131,7 +133,7 @@ def evaluateModel(y_pred, y_true):
 
     rocAuc = roc_auc_score(y_true = y_true, y_score = y_pred)
 
-    return precision, recall, f1, rocAuc
+    return precision, recall, f1, rocAuc, specificity
 
 # Milestone 2 — point 1: analyze class distribution & class balancing
 
@@ -167,8 +169,9 @@ def train_and_evaluate(model, name, X_train, y_train, X_val, y_val):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_val)
     y_prob = model.predict_proba(X_val)[:, 1]
-    precision, recall, f1, rocAuc= evaluateModel(y_pred, y_val)
-    create_graphs(name ,y_val, y_prob, precision, recall)
+    precision, recall, f1, rocAuc, specificity = evaluateModel(y_pred, y_val)
+    threshold = 0.5
+    create_graphs(name ,y_val, y_prob, precision, recall, specificity, threshold)
 
     print(f"\n[Evaluate]  {name}")
     print(f"        Precision : {precision:.4f}")
@@ -179,17 +182,36 @@ def train_and_evaluate(model, name, X_train, y_train, X_val, y_val):
     return model, {"precision": precision, "recall": recall, "f1": f1, "roc-auc": rocAuc}
 
 # create_graphs creates the precision vs recall graph and the ROC curve graph
-def create_graphs(name ,y_true, y_prob, precision, recall):
+def create_graphs(name ,y_true, y_prob, precision, recall, specificity, threshold):
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14, 6))
     PrecisionRecallDisplay.from_predictions(y_true = y_true, y_score = y_prob, ax = axs[0])
     axs[0].set_title(f"Precision and Recall curve for {name}")
-    axs[0].plot(recall, precision, marker = "*", markersize = 8, color = "red", label="Default threshold of 0.5")
+    axs[0].plot(recall, precision, marker = "*", markersize = 8, color = "red", label=f"Threshold of {threshold}")
     axs[0].legend()
     RocCurveDisplay.from_predictions(y_true = y_true, y_score = y_prob, ax = axs[1])
     axs[1].set_title(f"ROC curve for {name}")
-    axs[1].plot(recall, precision, marker = "*", markersize = 8, color = "red", label = "Default threshold of 0.5")
+    axs[1].plot(1-specificity, recall, marker = "*", markersize = 8, color = "red", label = f"Threshold of {threshold}")
     axs[1].legend()
-    return
+  
+# tune_model finds a the best threshold to maximize f1 score then applys it to the model and evaluates
+def tune_model(model, name, X_train, y_train, X_val, y_val):
+    newModel = TunedThresholdClassifierCV(estimator = model, scoring = "f1")
+    newModel.fit(X_train, y_train)
+    print(f"\n[Threshold evaluation]  {name}")
+    print(f"        Best Threshold : {newModel.best_threshold_:.4f}")
+    y_pred = newModel.predict(X_val)
+    y_prob = newModel.predict_proba(X_val)[:, 1]
+    precision, recall, f1, rocAuc, specificity = evaluateModel(y_pred, y_val)
+    create_graphs(name ,y_val, y_prob, precision, recall, specificity, round(newModel.best_threshold_, 4))
+
+    print(f"\n[Evaluate]  {name} using threshold of {round(newModel.best_threshold_, 4)}")
+    print(f"        Precision : {precision:.4f}")
+    print(f"        Recall    : {recall:.4f}")
+    print(f"        F1-score  : {f1:.4f}")
+    print(f"        ROC-AUC-score  : {rocAuc:.4f}")
+    
+    return newModel
+
 # Main
 
 def main():
@@ -242,6 +264,10 @@ def main():
         "Decision Tree — class-weighted",
         X_train, y_train, X_val, y_val,
     )
+
+    # Milestone 2 class weighted logistic regression model determing a new threshold and applying it then evaluating
+    tune_model(baseline_model, "Logistic Regression — baseline (unweighted)", X_train, y_train, X_val, y_val)
+    tune_model(balanced_lr_model, "Logistic Regression — class-weighted", X_train, y_train, X_val, y_val)
 
     print("\n[Summary]  Validation performance comparison")
     print(f"  {'Model':<38} {'Precision':>10} {'Recall':>8} {'F1':>8} {'ROC-AUC':>8}")
