@@ -210,7 +210,7 @@ def tune_model(model, name, X_train, y_train, X_val, y_val):
     print(f"        F1-score  : {f1:.4f}")
     print(f"        ROC-AUC-score  : {rocAuc:.4f}")
     
-    return newModel
+    return newModel, {"precision": precision, "recall": recall, "f1": f1, "roc-auc": rocAuc }
 
 # Main
 
@@ -265,21 +265,45 @@ def main():
         X_train, y_train, X_val, y_val,
     )
 
+    # Milestone 2 Assess Feature Importance for Decision Tree Model
+    print("\n[Evaluate]  Decision Tree Feature Importance")
+    important_features = pd.Series(tree_model.feature_importances_, index = X_train.columns)
+    top_features = important_features.sort_values(ascending=False).head(5)
+    for col, i in top_features.items():
+        print(f"        {col:<15} : {i:.4f}")
+
     # Milestone 2 class weighted logistic regression model determing a new threshold and applying it then evaluating
-    tune_model(baseline_model, "Logistic Regression — baseline (unweighted)", X_train, y_train, X_val, y_val)
-    tune_model(balanced_lr_model, "Logistic Regression — class-weighted", X_train, y_train, X_val, y_val)
+    baseline_tuned_model, baseline_tuned_metrics = tune_model(baseline_model, "Logistic Regression — baseline (unweighted)", X_train, y_train, X_val, y_val)
+    balanced_tuned_model , balanced_tuned_metrics = tune_model(balanced_lr_model, "Logistic Regression — class-weighted", X_train, y_train, X_val, y_val)
+
 
     print("\n[Summary]  Validation performance comparison")
     print(f"  {'Model':<38} {'Precision':>10} {'Recall':>8} {'F1':>8} {'ROC-AUC':>8}")
     print(f"  {'-'*76}")
     for name, m in [
         ("Logistic Regression (baseline)", baseline_metrics),
+        ("Logistic Regression (baseline - tuned)", baseline_tuned_metrics),
         ("Logistic Regression (balanced)", balanced_lr_metrics),
+        ("Logistic Regression (balanced - tuned)", balanced_tuned_metrics),
         ("Decision Tree (balanced)", tree_metrics),
     ]:
         print(f"  {name:<38} {m['precision']:>10.4f} {m['recall']:>8.4f} {m['f1']:>8.4f} {m['roc-auc']:>8.4f}")
 
     plt.show()
+
+    print("\n[Final Evaluation]  Performance on Unseen Test Data")
+    print(f"  {'Model':<38} {'Precision':>10} {'Recall':>8} {'F1':>8} {'ROC-AUC':>8}")
+    print(f"  {'-'*76}")
+    for name, m in [
+        ("Logistic Regression (baseline)", baseline_model),
+        ("Logistic Regression (baseline - tuned)", baseline_tuned_model),
+        ("Logistic Regression (balanced)", balanced_lr_model),
+        ("Logistic Regression (balanced - tuned)", balanced_tuned_model),
+        ("Decision Tree (balanced)", tree_model),
+    ]:
+        y_pred = m.predict(X_test)
+        precision, recall, f1, rocAuc, specificity = evaluateModel(y_pred, y_test)
+        print(f"  {name:<38} {precision:>10.4f} {recall:>8.4f} {f1:>8.4f} {rocAuc:>8.4f}")    
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
