@@ -1,23 +1,50 @@
 # Credit Card Fraud Detection
 
-## Introduction 
+## Introduction
 
-Credit card fraud is a major challenge in the financial industry, costing billions of dollars globally each year. Detecting fraudulent transactions automatically is critical, but difficult — fraud cases are rare, patterns are subtle, and models must be both accurate and fast enough to flag transactions in real time.
+This project uses machine learning to detect credit card fraud. The dataset has many more normal transactions than fraud transactions, so different models are tested to improve fraud detection.
 
-This project builds a machine learning system to classify credit card transactions as legitimate or fraudulent using supervised learning. We use a real-world dataset with a significant class imbalance (roughly 1 fraudulent transaction for every 579 legitimate ones), which reflects the actual difficulty of the problem. Working through that imbalance — rather than avoiding it with synthetic data — is a core part of what makes this project meaningful.
+## What This Project Does
 
-This file covers the first piece of the pipeline: loading the dataset and partitioning it into training, validation, and test sets.
+The program loads the dataset and splits it into **60% training, 20% validation, and 20% test data**. It scales the `Time` and `Amount` columns, trains Logistic Regression and Decision Tree models, uses class weights, tunes the Logistic Regression threshold, creates graphs, and compares the models using precision, recall, F1-score, and ROC-AUC.
 
----
+## Requirements
 
-## What this does
+Install the required libraries:
 
-Loads `creditcard.csv`, scales the `Time` and `Amount` columns, and splits the data into three stratified subsets:
+```bash
+pip3 install numpy pandas kagglehub matplotlib scikit-learn
+```
 
-| Split      | Size | Purpose |
-|------------|------|---------|
-| Train      | 60%  | Model learns from this |
-| Validation | 20%  | Used to check performance during development |
-| Test       | 20%  | Sealed until final evaluation |
+## How to Run
 
-Stratified splitting ensures the fraud ratio is preserved across all three subsets rather than concentrated in one by chance.
+Go to the project folder:
+
+```bash
+cd Credit-Card-Fraud-Detection
+```
+
+Then run:
+
+```bash
+python3 data_pipeline.py
+```
+
+If you already have the dataset, you can run:
+
+```bash
+python3 data_pipeline.py --data creditcard.csv
+```
+
+## Models Used
+
+The project uses Logistic Regression, class-weighted Logistic Regression, Decision Tree, and tuned Logistic Regression models.
+
+## Output
+
+The program shows the dataset split, class balance, model results, best thresholds, and final test results. It also creates Precision-Recall and ROC graphs.
+
+## Files
+
+The main file is `data_pipeline.py`. The program also creates `train.csv` for the 60% training data, `val.csv` for the 20% validation data, and `test.csv` for the 20% test data.
+
