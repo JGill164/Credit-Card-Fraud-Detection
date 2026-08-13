@@ -30,13 +30,8 @@ Then run:
 python3 data_pipeline.py
 ```
 
-If you already have the dataset, you can run:
+When the graphs appear, close each graph window to continue the program. After the graphs are closed, the Terminal will show the Validation Performance Comparison and Final Evaluation on Unseen Test Data.
 
-```bash
-python3 data_pipeline.py --data creditcard.csv
-```
-
-## Models Used
 
 The project uses Logistic Regression, class-weighted Logistic Regression, Decision Tree, and tuned Logistic Regression models.
 
@@ -46,5 +41,5 @@ The program shows the dataset split, class balance, model results, best threshol
 
 ## Files
 
-The main file is `data_pipeline.py`. The program also creates `train.csv` for the 60% training data, `val.csv` for the 20% validation data, and `test.csv` for the 20% test data.
+The main file is `data_pipeline.py`. The program also creates `train.csv` for the 60% training data, `val.csv` for the 20% validation data, and `test.csv` for the 20% test data when you run the code.
 
